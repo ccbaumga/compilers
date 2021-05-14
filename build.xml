@@ -1,0 +1,11 @@
+<project>
+    <target name="run">
+      <exec executable="bash">
+        <arg value="commands.sh"/>
+        <!--<arg value="/tmp"/>-->
+      </exec>
+    </target>
+    <target name="all">
+        	<antcall target="run"></antcall>
+    </target>
+</project>

@@ -1,0 +1,39 @@
+BEGIN
+willy : INT;
+VOID main(weird : INT){
+   billy : INT;
+   billy := 4;
+   array : INT [5];
+   sally : STRING;
+   billy := 4 + 5 + 6 + 7;
+   sally := "hellofriends";
+   PUT(sally);
+   billy := 3 + 0;
+   PUT(billy);
+   IF (5 == 4) THEN {
+      PUT(sally);
+   }
+   i : INT;
+   i := 0;
+   j : INT;
+   j := 0;
+   WHILE ( i < 4) {
+      j := 0;
+      WHILE ( 1 + 1 + 1 * 0 + 1 > j) {
+          PUT(i);
+          PUT(j);
+          j := j + 1;
+      }
+   i := i + 1;
+   }
+   f2(weird);
+   FOR ( INT z := 1; z < 4; z++){
+      array[2] := z;
+   }
+   PUT(sally);
+}
+
+REAL f2(weird : REAL){
+   susy:REAL;
+}
+END
