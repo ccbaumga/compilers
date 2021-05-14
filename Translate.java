@@ -12,6 +12,8 @@ class Translate extends DepthFirstAdapter
     public static Stack<Integer> exprstack;
     public static String lastnum;
     public static String lastid;
+	public static String lastreal;
+	public static String idonright;
     public static Variable[] globalvars; 
     Variable[] localparams;
     Variable[] localvars;
@@ -1012,7 +1014,8 @@ public void caseASecondClassmethodstmts(ASecondClassmethodstmts node){
 
 	//if it reaches an real, print it off
     public void caseTReal(TReal node){
-		 System.out.println("\tGot myself an real: <"+node.getText()+">");
+		 //System.out.println("\tGot myself an real: <"+node.getText()+">");
+		 lastreal = node.getText();
 	}
 
 	//if it reaches an string, print it off
@@ -1028,6 +1031,10 @@ public void caseASecondClassmethodstmts(ASecondClassmethodstmts node){
              registers[i] = true;
          }
          arrayoffset = -1;
+		 lastnum = null;
+		 laststring = null;
+		 lastreal = null;
+		 idonright = null;
 	}
 
 
@@ -1063,16 +1070,46 @@ public void methodOut(){
 }
 
 public void assign(){
+		//check type of right side
+		String rType;
+		String gType = "NULL";
+		if(laststring != null){
+			rType = "STRING";
+		} else if(lastnum != null){
+			rType = "INT";
+		} else if(lastreal != null){
+			rType = "REAL";
+		} else {
+			rType = idonright;
+		}
         if (arrayoffset != -1){//if its to an array index
             System.out.println("\tla $t0, " + lastid);
             System.out.println("\tsw $t0, " + arrayoffset + "($t0)");
         } else if (curmeth.containsParam(lastid)){//if its a parameter
             System.out.println("\tsw $t0, " + curmeth.getParam(lastid).stack_offset + "($sp)");
         } else if (curmeth.containsVar(lastid)){ //if it's a local variable
-            System.out.println("\tsw $t0, " + curmeth.getVar(lastid).stack_offset + "($sp)");
+			if(curmeth.getVar(lastid).type == rType){
+				System.out.println("\tsw $t0, " + curmeth.getVar(lastid).stack_offset + "($sp)");
+			} else {
+				System.out.println("\t\tType mismatch cannot assign " + curmeth.getVar(lastid).type + " to a " + rType);
+			}
         } else { //if its a global variable
-            System.out.print("\tsw $t0, ");
-            System.out.println(lastid);
+			for( int i = 0; i < globalvars.length; i++)
+			{
+				if(globalvars[i].name == lastid)
+				{
+					gType = globalvars[i].type;
+				}
+			}
+			if(gType == rType)
+			{
+				System.out.print("\tsw $t0, ");
+				System.out.println(lastid);
+			}
+			else 
+			{
+				System.out.println("\t\tType mismatch cannot assign " + gType + " to a " + rType);
+			}
         }
 }
 
@@ -1085,11 +1122,14 @@ public void getIdValue(){
             exprstack.push(i);
         }
     }
+	
     if (curmeth.containsParam(lastid)){
         System.out.println("\tlw $t" + reg + ", " + curmeth.getParam(lastid).stack_offset + "($sp)");
     } else if (curmeth.containsVar(lastid)){
+		idonright = curmeth.getVar(lastid).type;
         System.out.println("\tlw $t" + reg + ", " + curmeth.getVar(lastid).stack_offset + "($sp)");
     } else if (SymbolTraverse.st.containsVar(lastid)){
+		idonright = SymbolTraverse.st.getVar(lastid).type;
         System.out.println("\tlw $t" + reg + ", " + lastid);
     }
 }
