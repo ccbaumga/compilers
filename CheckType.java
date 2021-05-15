@@ -5,15 +5,16 @@ import FinalProject.node.*;
 import java.util.*;
 
 
-class SymbolTraverse extends DepthFirstAdapter
+class CheckType extends DepthFirstAdapter
 {
-    public static SymbolTable st;
     Method curmeth = null;
-    String assigntype = null;
+    String lhsid = null;
+    String lhstype = null;
+    String rhstype = null;
+    String rhslastid = null;
     String lastid = null;
- 	public SymbolTraverse() {
+ 	public CheckType() {
 		//System.out.println("Start of the Printing Action");
-        st = new SymbolTable();
 	}
 
 	//this gets called if the production is prog --> id digit
@@ -82,10 +83,6 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getId().apply(this);
         node.getColon().apply(this);
         node.getType().apply(this);
-        if (curmeth.addParam(new Variable(lastid, assigntype)) == false) {
-            System.out.println("couldn't add param " + lastid + ": already declared in current scope");
-            System.exit(1);
-        }
     }
 
     //varlist --> {third} id colon type lbracket int rbracket
@@ -97,10 +94,6 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getLbracket().apply(this);
         node.getInt().apply(this);
         node.getRbracket().apply(this);
-        if (curmeth.addParam(new Variable(lastid, assigntype, "[]")) == false) {
-            System.out.println("couldn't add param " + lastid + ": already declared in current scope");
-            System.exit(1);
-        }
     }
 
     //varlist --> {fourth} id colon type comma varlist
@@ -109,10 +102,6 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getId().apply(this);
         node.getColon().apply(this);
         node.getType().apply(this);
-        if (curmeth.addParam(new Variable(lastid, assigntype)) == false) {
-            System.out.println("couldn't add param " + lastid + ": already declared in current scope");
-            System.exit(1);
-        }
         node.getComma().apply(this);
         node.getVarlist().apply(this);
     }
@@ -127,10 +116,6 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getInt().apply(this);
         node.getRbracket().apply(this);
         node.getComma().apply(this);
-        if (curmeth.addParam(new Variable(lastid, assigntype, "[]")) == false) {
-            System.out.println("couldn't add param " + lastid + ": already declared in current scope");
-            System.exit(1);
-        }
         node.getVarlist().apply(this);
     }
 
@@ -138,17 +123,6 @@ class SymbolTraverse extends DepthFirstAdapter
     public void caseAFirstIdlist(AFirstIdlist node){
         //System.out.println("\tGot a first idlist!");
         node.getId().apply(this);
-        if (curmeth == null) {
-            if (st.addVar(new Variable(lastid , assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        } else {
-            if (curmeth.addVar(new Variable(lastid, assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        }
     }
 
     //idlist --> {second} id comma idlist
@@ -190,8 +164,17 @@ class SymbolTraverse extends DepthFirstAdapter
     public void caseAFirstStmt(AFirstStmt node){
         //System.out.println("\tGot a first stmt!");
         node.getIdorarray().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
         node.getAssign().apply(this);
         node.getExpr().apply(this);
+        if (!lhstype.equals(rhstype)){
+            System.out.println("attempting to store a value in the wrong type variable \n" + lastid + " is " + lhstype + " not " + rhstype);
+            System.exit(1);
+        }
         node.getSemicolon().apply(this);
     }
 
@@ -199,6 +182,15 @@ class SymbolTraverse extends DepthFirstAdapter
     public void caseAThirdStmt(AThirdStmt node){
         //System.out.println("\tGot a third stmt!");
         node.getIdorarray().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("STRING")){
+            System.out.println("types don't match. trying to assign STRING to " + lhstype);
+            System.exit(1);
+        }
         node.getAssign().apply(this);
         node.getAnychars().apply(this);
         node.getSemicolon().apply(this);
@@ -207,19 +199,18 @@ class SymbolTraverse extends DepthFirstAdapter
     //stmt --> {fifth} idlist colon type semicolon
     public void caseAFifthStmt(AFifthStmt node){
         //System.out.println("\tGot a fifth stmt!");
-        node.getType().apply(this);
         node.getIdlist().apply(this);
         node.getColon().apply(this);
+        node.getType().apply(this);
         node.getSemicolon().apply(this);
     }
 
     //stmt --> {sixth} idlist colon type lbracket int rbracket semicolon
     public void caseASixthStmt(ASixthStmt node){
         //System.out.println("\tGot a sixth stmt!");
-        node.getType().apply(this);
         node.getIdlist().apply(this);
-        curmeth.getVar(lastid).isarray = true;
         node.getColon().apply(this);
+        node.getType().apply(this);
         node.getLbracket().apply(this);
         node.getInt().apply(this);
         node.getRbracket().apply(this);
@@ -274,12 +265,30 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getFor().apply(this);
         node.getLparen().apply(this);
         node.getFive().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
         node.getAssign().apply(this);
         node.getExpr().apply(this);
+        if (!lhstype.equals(rhstype)){
+            System.out.println("attempting to store a value in the wrong type variable \n" + lastid + " is " + lhstype + " not " + rhstype);
+            System.exit(1);
+        }
         node.getOne().apply(this);
         node.getBoolean().apply(this);
         node.getTwo().apply(this);
         node.getSix().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("INT")){
+            System.out.println("you can only use ++ or -- on ant int, not a " + lhstype + " for variable " + lastid);
+            System.exit(1);
+        }
         node.getThree().apply(this);
         node.getFour().apply(this);
         node.getRparen().apply(this);
@@ -295,23 +304,21 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getLparen().apply(this);
         node.getType().apply(this);
         node.getFive().apply(this);
-        if (curmeth == null) {
-            if (st.addVar(new Variable(lastid , assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        } else {
-            if (curmeth.addVar(new Variable(lastid, assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        }
         node.getAssign().apply(this);
         node.getExpr().apply(this);
         node.getOne().apply(this);
         node.getBoolean().apply(this);
         node.getTwo().apply(this);
         node.getSix().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("INT")){
+            System.out.println("you can only use ++ or -- on ant int, not a " + lhstype + " for variable " + lastid);
+            System.exit(1);
+        }
         node.getThree().apply(this);
         node.getFour().apply(this);
         node.getRparen().apply(this);
@@ -326,12 +333,30 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getFor().apply(this);
         node.getLparen().apply(this);
         node.getFive().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
         node.getAssign().apply(this);
         node.getExpr().apply(this);
+        if (!lhstype.equals(rhstype)){
+            System.out.println("attempting to store a value in the wrong type variable \n" + lastid + " is " + lhstype + " not " + rhstype);
+            System.exit(1);
+        }
         node.getOne().apply(this);
         node.getBoolean().apply(this);
         node.getTwo().apply(this);
         node.getSix().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("INT")){
+            System.out.println("you can only use ++ or -- on ant int, not a " + lhstype + " for variable " + lastid);
+            System.exit(1);
+        }
         node.getThree().apply(this);
         node.getFour().apply(this);
         node.getRparen().apply(this);
@@ -347,23 +372,21 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getLparen().apply(this);
         node.getType().apply(this);
         node.getFive().apply(this);
-        if (curmeth == null) {
-            if (st.addVar(new Variable(lastid , assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        } else {
-            if (curmeth.addVar(new Variable(lastid, assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        }
         node.getAssign().apply(this);
         node.getExpr().apply(this);
         node.getOne().apply(this);
         node.getBoolean().apply(this);
         node.getTwo().apply(this);
         node.getSix().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("INT")){
+            System.out.println("you can only use ++ or -- on ant int, not a " + lhstype + " for variable " + lastid);
+            System.exit(1);
+        }
         node.getThree().apply(this);
         node.getFour().apply(this);
         node.getRparen().apply(this);
@@ -378,14 +401,32 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getFor().apply(this);
         node.getLparen().apply(this);
         node.getFive().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
         node.getAba().apply(this);
         node.getAca().apply(this);
+        if (!lhstype.equals(rhstype)){
+            System.out.println("attempting to store a value in the wrong type variable \n" + lastid + " is " + lhstype + " not " + rhstype);
+            System.exit(1);
+        }
         node.getOne().apply(this);
         node.getBoolean().apply(this);
         node.getTwo().apply(this);
         node.getSix().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
         node.getGay().apply(this);
         node.getAaa().apply(this);
+        if (!lhstype.equals(rhstype)){
+            System.out.println("attempting to store a value in the wrong type variable \n" + lastid + " is " + lhstype + " not " + rhstype);
+            System.exit(1);
+        }
         node.getRparen().apply(this);
         node.getLbrace().apply(this);
         node.getStmtseq().apply(this);
@@ -399,25 +440,23 @@ class SymbolTraverse extends DepthFirstAdapter
         node.getType().apply(this);
         node.getLparen().apply(this);
         node.getFive().apply(this);
-        if (curmeth == null) {
-            if (st.addVar(new Variable(lastid , assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        } else {
-            if (curmeth.addVar(new Variable(lastid, assigntype)) == false) {
-                System.out.println("couldn't add variable " + lastid + ": already declared in current scope");
-            System.exit(1);
-            }
-        }
         node.getAba().apply(this);
         node.getAca().apply(this);
         node.getOne().apply(this);
         node.getBoolean().apply(this);
         node.getTwo().apply(this);
         node.getSix().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
         node.getGay().apply(this);
         node.getAaa().apply(this);
+        if (!lhstype.equals(rhstype)){
+            System.out.println("attempting to store a value in the wrong type variable \n" + lastid + " is " + lhstype + " not " + rhstype);
+            System.exit(1);
+        }
         node.getRparen().apply(this);
         node.getLbrace().apply(this);
         node.getStmtseq().apply(this);
@@ -449,6 +488,15 @@ class SymbolTraverse extends DepthFirstAdapter
     public void caseAEighteenthStmt(AEighteenthStmt node){
         //System.out.println("\tGot a eightteenth stmt!");
         node.getIdorarray().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("INT")){
+            System.out.println("you can only use ++ or -- on ant int, not a " + lhstype + " for variable " + lastid);
+            System.exit(1);
+        }
         node.getFirst().apply(this);
         node.getSecond().apply(this);
         node.getSemicolon().apply(this);
@@ -458,6 +506,15 @@ class SymbolTraverse extends DepthFirstAdapter
     public void caseANineteenthStmt(ANineteenthStmt node){
         //System.out.println("\tGot a nineteenth stmt!");
         node.getIdorarray().apply(this);
+        if(curmeth.containsVar(lastid)){
+            lhstype = curmeth.getVar(lastid).type;
+        } else if (curmeth.containsParam(lastid)){
+            lhstype = curmeth.getParam(lastid).type;
+        }
+        if (!lhstype.equals("INT")){
+            System.out.println("you can only use ++ or -- on ant int, not a " + lhstype + " for variable " + lastid);
+            System.exit(1);
+        }
         node.getFirst().apply(this);
         node.getSecond().apply(this);
         node.getSemicolon().apply(this);
@@ -510,35 +567,30 @@ class SymbolTraverse extends DepthFirstAdapter
 public void caseAFirstType(AFirstType node){
 	//System.out.println("\tGot a First Type!");
 	node.getIntdecl().apply(this);
-    assigntype = "INT";
 }
 
 //Type --> {second} realdecl
 public void caseASecondType(ASecondType node){
 	//System.out.println("\tGot a Second Type!");
 	node.getRealdecl().apply(this);
-    assigntype = "REAL";
 }
 
 //Type --> {third} voiddecl
 public void caseAThirdType(AThirdType node){
 	//System.out.println("\tGot a third Type!");
 	node.getVoiddecl().apply(this);
-    assigntype = "VOID";
 }
 
 //Type --> {fourth} booleandecl
 public void caseAFourthType(AFourthType node){
 	//System.out.println("\tGot a fourth Type!");
 	node.getBooleandecl().apply(this);
-    assigntype = "BOOLEAN";
 }
 
 //Type --> {fifth} stringdecl
 public void caseAFifthType(AFifthType node){
 	//System.out.println("\tGot a fifth Type!");
 	node.getStringdecl().apply(this);
-    assigntype = "STRING";
 }
 
 //Type --> {sixth} iddecl
@@ -608,26 +660,46 @@ public void caseAFirstFactor(AFirstFactor node){
 	//System.out.println("\tGet a first factor!");
 	node.getMinus().apply(this);
 	node.getFactor().apply(this);
+    if ((!rhstype.equals("INT")) && (!rhstype.equals("REAL"))){
+        System.out.println("you can only take the negative of a number");
+        System.exit(1);
+    }
 }
 
 public void caseASecondFactor(ASecondFactor node){
 	//System.out.println("\tGet a second factor!");
 	node.getInt().apply(this);
+    rhstype = "INT";
 }
 
 public void caseAThirdFactor(AThirdFactor node){
 	//System.out.println("\tGet a Third factor!");
 	node.getReal().apply(this);
+    rhstype = "REAL";
 }
 
 public void caseAFourthFactor(AFourthFactor node){
 	//System.out.println("\tGet a fourth factor!");
 	node.getId().apply(this);
+    if(curmeth.containsVar(lastid)){
+        rhstype = curmeth.getVar(lastid).type;
+    } else if (curmeth.containsParam(lastid)){
+        rhstype = curmeth.getParam(lastid).type;
+    }
 }
 
 public void caseAFifthFactor(AFifthFactor node){
 	//System.out.println("\tGet a fifth factor!");
 	node.getId().apply(this);
+    if(curmeth.containsVar(lastid)){
+        rhstype = curmeth.getVar(lastid).type;
+    } else if (curmeth.containsParam(lastid)){
+        rhstype = curmeth.getParam(lastid).type;
+    }
+    if(rhstype.equals("STRING")){
+        System.out.println("you cannot do math on a string");
+        System.exit(1);
+    }
 	node.getLbracket().apply(this);
 	node.getInt().apply(this);
 	node.getRbracket().apply(this);
@@ -737,11 +809,7 @@ public void caseAFirstMethodstmtseq(AFirstMethodstmtseq node){
 	//System.out.println("\tGot a first Methodstmtseq!");
 	node.getType().apply(this);
 	node.getId().apply(this);
-    curmeth = new Method(lastid, assigntype);
-    if (st.addMethod(curmeth) == false) {
-        System.out.println("couldn't add method " + lastid + ": already declared in current scope");
-            System.exit(1);
-    }
+    curmeth = SymbolTraverse.st.getMethod(lastid);
 	node.getLparen().apply(this);
 	node.getVarlist().apply(this);
 	node.getRparen().apply(this);
@@ -753,9 +821,9 @@ public void caseAFirstMethodstmtseq(AFirstMethodstmtseq node){
 
 public void caseASecondMethodstmtseq(ASecondMethodstmtseq node){
 	//System.out.println("\tGot a Second Methodstmtseq!");
-	node.getType().apply(this);
 	node.getIdlist().apply(this);
 	node.getColon().apply(this);
+	node.getType().apply(this);
 	node.getSemicolon().apply(this);
 }
 
@@ -782,11 +850,7 @@ public void caseASecondClassmethodstmt(ASecondClassmethodstmt node){
 	//System.out.println("\tGot a Second Classmethodstmt!");
 	node.getType().apply(this);
 	node.getId().apply(this);
-    curmeth = new Method(lastid, assigntype);
-    if (st.addMethod(curmeth) == false) {
-        System.out.println("couldn't add method " + lastid + ": already declared in current scope");
-            System.exit(1);
-    }
+    curmeth = SymbolTraverse.st.getMethod(lastid);
 	node.getLparen().apply(this);
 	node.getVarlist().apply(this);
 	node.getRparen().apply(this);
@@ -798,9 +862,9 @@ public void caseASecondClassmethodstmt(ASecondClassmethodstmt node){
 
 public void caseAThirdClassmethodstmt(AThirdClassmethodstmt node){
 	//System.out.println("\tGot a Third Classmethodstmt!");
-	node.getType().apply(this);
 	node.getIdlist().apply(this);
 	node.getColon().apply(this);
+	node.getType().apply(this);
 	node.getSemicolon().apply(this);
 }
 
@@ -818,18 +882,21 @@ public void caseASecondClassmethodstmts(ASecondClassmethodstmts node){
 	//if it reaches an id, print it off
     public void caseTId(TId node){
 		 //System.out.println("\tGot myself an id: <"+node.getText()+">");
-         lastid = node.getText();
-         //this is an id. recognize it?
+        lastid = node.getText();
 	}
 
 	//if it reaches an int, print it off
     public void caseTInt(TInt node){
 		 //System.out.println("\tGot myself an int: <"+node.getText()+">");
+        
+        
 	}
 
 	//if it reaches an real, print it off
     public void caseTReal(TReal node){
 		 //System.out.println("\tGot myself an real: <"+node.getText()+">");
+         System.out.println("Unfortunately, we do not support real numbers at this time. Your number : " + node.getText() + " cannot be evaluated");
+         System.exit(0);
 	}
 
 	//if it reaches an string, print it off
@@ -837,5 +904,10 @@ public void caseASecondClassmethodstmts(ASecondClassmethodstmts node){
 		 //System.out.println("\tGot myself an anychars: <"+node.getText()+">");
 	}
 
+    //if it reaches an semicolon, 
+    public void caseTSemicolon(TSemicolon node){
+        rhstype = null;
+	}
 
 }
+

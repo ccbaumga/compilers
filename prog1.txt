@@ -3,6 +3,12 @@ willy : INT;
 VOID main(weird : INT){
    billy : INT;
    billy := 4;
+   a : INT;
+   a := 7;
+   b : INT;
+   b := 13;
+   b := f2(billy, a, b);
+   f2(a, b, billy);
    array : INT [5];
    sally : STRING;
    billy := 4 + 5 + 6 + 7;
@@ -13,6 +19,11 @@ VOID main(weird : INT){
    IF (5 == 4) THEN {
       PUT(sally);
    }
+   array[0] := 1;
+   array[1] := 2;
+   PUT(array[0]);
+   PUT(array[1]);
+   array[2] := array[0] + array[1];
    i : INT;
    i := 0;
    j : INT;
@@ -26,14 +37,28 @@ VOID main(weird : INT){
       }
    i := i + 1;
    }
-   f2(weird);
    FOR ( INT z := 1; z < 4; z++){
       array[2] := z;
    }
    PUT(sally);
 }
 
-REAL f2(weird : REAL){
+INT f2(weird : INT, beard : INT, silly : INT){
    susy:REAL;
+   PUT(weird);
+   PUT(beard);
+   silly := f3(f3(silly + 1) + 1);
+   PUT(silly);
+   RETURN beard;
+}
+
+INT f3(x : INT){
+   PUT(x);
+   f4();
+   RETURN x;
+}
+
+INT f4(){
+
 }
 END

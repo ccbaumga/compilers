@@ -1,0 +1,28 @@
+Functionality: 
+This compiler still doesn't work with REALs. But, thats ok. It also doesn't work with classes and user-defined objects. 
+However, the methods part of it works really good. You can call functions with multiple parameters that 
+call other functions with parameters (shown in prog1). You can get the return value from functions. My favorite part
+of this is that recursion works correctly in our language. In prog3, you can get any fibonacci number. 
+Be careful, in prog3 I implemented it the awful way (recursion) as opposed to loops so if you ask for a big number 
+you might be there a while. Of course, if you made your own program in my language you could implement the 
+fibo function better. I do regret only having 1 callee save register implemented. If I made any tweaks, i'd
+add a few more. 
+
+
+
+
+
+Error Detection:
+   The variable type mismatch is very strict at the moment, it won't allow any assigning of different types period
+   Which is demonstrated in the code. This becomes a problem once a type of array gets into play due to how we 
+   treat the types of arrays. As of right now, int arrays and ints are the same type, so technically you could try 
+   accessing the index of a regular int variable, and you might get a segmentation fault. 
+   
+   Strings are kind of a special type in this language, as the only thing you can really do with them is print them 
+   out. Strings are stored in arrays on the heap, and string variables cannot be accessed in the other ways that other 
+   variables can, like as a factor. 
+
+   Variables don't have to be declared before they are used. Why would they? We made the language and decided that wasn't
+   necessary. 
+   
+   

@@ -21,9 +21,12 @@ class Translate extends DepthFirstAdapter
     String laststring = null;
     public static int ifcount = 0;
     public static int whilecount = 0;
+    int numargs;
+    Stack<Integer> argcount;
 
  	public Translate() {
 		//System.out.println("Start of the Translating Action");
+        argcount = new Stack<Integer>();
         arrayoffset = -1;
         exprstack = new Stack<Integer>();
         System.out.println("\t.data");
@@ -159,7 +162,7 @@ public void caseAFirstCond(AFirstCond node){
     System.out.println("\tor $t0, $t2, $t3");
     System.out.println("\tslti $t0, $t0, 1");
     registers[1] = true;
-    exprstack.pop();
+    exprstack.push(0);
 }
 //{second} notequal
 public void caseASecondCond(ASecondCond node){
@@ -171,7 +174,7 @@ public void caseASecondCond(ASecondCond node){
     System.out.println("\tslt $t3, $t0, $t1");
     System.out.println("\tor $t0, $t2, $t3");
     registers[1] = true;
-    exprstack.pop();
+    exprstack.push(0);
 }
 //{third} leq
 public void caseAThirdCond(AThirdCond node){
@@ -182,7 +185,7 @@ public void caseAThirdCond(AThirdCond node){
     System.out.println("\tslt $t0, $t1, $t0");
     System.out.println("\tslti $t0, $t0, 1");
     registers[1] = true;
-    exprstack.pop();
+    exprstack.push(0);
 }
 //{fourth} geq
 public void caseAFourthCond(AFourthCond node){
@@ -249,15 +252,33 @@ public void caseAFifthFactor(AFifthFactor node){
 	node.getId().apply(this);
 	node.getLbracket().apply(this);
 	node.getInt().apply(this);
+    arrayoffset = Integer.parseInt(lastnum);
 	node.getRbracket().apply(this);
+    getIdValue();
+    int reg = exprstack.pop();
+    System.out.println("\tlw $t" + reg + ", " + (4 * arrayoffset) + "($t" + reg + ")");
+    exprstack.push(reg);
 }
 
 public void caseASixthFactor(ASixthFactor node){
 	//System.out.println("\tGet a sixth factor!");
 	node.getId().apply(this);
+        String methodname = lastid;
+        argcount.push(0);
 	node.getLparen().apply(this);
 	node.getVarlisttwo().apply(this);
+        System.out.println("\tjal " + methodname);
 	node.getRparen().apply(this);
+        argcount.pop();
+    int reg = -1;
+    for (int i = 0; i < registers.length;i++){
+        if (registers[i] == true && reg == -1){
+            reg = i;
+            registers[i] = false;
+            exprstack.push(i);
+        }
+    }
+    System.out.println("\tmove $t" + reg + ", $v0");  
 }
 
 public void caseASeventhFactor(ASeventhFactor node){
@@ -393,12 +414,22 @@ public void caseASixthBoolean(ASixthBoolean node){
     public void caseASecondVarlisttwo(ASecondVarlisttwo node){
         //System.out.println("\tGot a second varlisttwo!");
         node.getExpr().apply(this);
+        int reg = exprstack.pop();//get the register of the expression's value
+        registers[reg] = true;
+        int argnum = argcount.pop();
+        argcount.push(argnum + 1);//set the current stack's value equal to the next argument ($a0 -> $a1)
+        System.out.println("\tmove $a" + argnum + ", $t" + reg);
     }
 
 	//varlisttwo --> {third} expr comma varlisttwo
     public void caseAThirdVarlisttwo(AThirdVarlisttwo node){
         //System.out.println("\tGot a third varlisttwo!");
         node.getExpr().apply(this);
+        int reg = exprstack.pop();//get the register of the expression's value
+        registers[reg] = true;
+        int argnum = argcount.pop();
+        argcount.push(argnum + 1);//set the current stack's value equal to the next argument ($a0 -> $a1)
+        System.out.println("\tmove $a" + argnum + ", $t" + reg);
         node.getComma().apply(this);
         node.getVarlisttwo().apply(this);
     }
@@ -489,6 +520,7 @@ public void caseASixthBoolean(ASixthBoolean node){
         node.getLbracket().apply(this);
         node.getInt().apply(this);
         node.getRbracket().apply(this);
+        arrayoffset = Integer.parseInt(lastnum);
     }
 
     //stmt --> {first} idorarray assign expr semicolon
@@ -508,7 +540,7 @@ public void caseASixthBoolean(ASixthBoolean node){
         node.getAnychars().apply(this);
         node.getIdorarray().apply(this);
         int stringlength = laststring.length();
-        System.out.println("\tli $a0, " + (stringlength + 1));
+        System.out.println("\tli $a0, " + (stringlength + 4));
         System.out.println("\tli $v0, 9\n\tsyscall");
         String str = laststring + "    ";
         int i;
@@ -546,6 +578,10 @@ public void caseASixthBoolean(ASixthBoolean node){
         node.getType().apply(this);
         node.getLbracket().apply(this);
         node.getInt().apply(this);
+        System.out.println("\tli $a0, " + (Integer.parseInt(lastnum) * 4));
+        System.out.println("\tli $v0, 9\n\tsyscall");
+        System.out.println("\tmove $t0, $v0");
+        System.out.println("\tsw $t0, " + curmeth.getVar(lastid).stack_offset + "($sp)");
         node.getRbracket().apply(this);
         node.getSemicolon().apply(this);
     }
@@ -814,8 +850,8 @@ public void caseASixthBoolean(ASixthBoolean node){
         node.getLparen().apply(this);
         node.getIdorarray().apply(this);
         if (arrayoffset != -1){//if its to an array index
-            System.out.println("\tla $t0, " + lastid);
-            System.out.println("\tlw $a0, " + arrayoffset + "($t0)");
+            System.out.println("\tlw $t0, " + curmeth.getVar(lastid).stack_offset + "($sp)");
+            System.out.println("\tlw $a0, " + (arrayoffset * 4) + "($t0)");
             System.out.println("\tli $v0, 1\n\tsyscall");
         } else if (curmeth.containsParam(lastid)){//if its a parameter
             if (curmeth.getParam(lastid).type.equals("STRING")){
@@ -882,9 +918,13 @@ public void caseASixthBoolean(ASixthBoolean node){
     public void caseATwentyoneStmt(ATwentyoneStmt node){
         //System.out.println("\tGot a twentyone stmt!");
         node.getId().apply(this);
+        String methodname = lastid;
+        argcount.push(0);
         node.getLparen().apply(this);
         node.getVarlisttwo().apply(this);
+        System.out.println("\tjal " + methodname);
         node.getRparen().apply(this);
+        argcount.pop();
         node.getSemicolon().apply(this);
     }
 
@@ -906,6 +946,15 @@ public void caseASixthBoolean(ASixthBoolean node){
         //System.out.println("\tGot a twentythree stmt!");
         node.getReturn().apply(this);
         node.getExpr().apply(this);
+        System.out.println("\tmove $v0, $t0");
+        if (curmeth.name.equals("main")){
+            System.out.println("\tli $v0, 10 \n\tsyscall");
+        } else {
+            System.out.println("\tlw $t0, 0($sp)");
+            System.out.println("\tlw $ra, 4($sp)");
+            System.out.println("\taddi $sp, $sp, " + stacksize);
+            System.out.println("\tjr $ra");
+        }
         node.getSemicolon().apply(this);
     }
 
@@ -1012,7 +1061,7 @@ public void caseASecondClassmethodstmts(ASecondClassmethodstmts node){
 
 	//if it reaches an real, print it off
     public void caseTReal(TReal node){
-		 System.out.println("\tGot myself an real: <"+node.getText()+">");
+		 //System.out.println("\tGot myself an real: <"+node.getText()+">");
 	}
 
 	//if it reaches an string, print it off
@@ -1040,10 +1089,12 @@ public void methodIn(){
     int num = localparams.length + localvars.length;
     stacksize = num * 4 + 8;
     System.out.println("\taddi $sp, $sp, " + -1 * stacksize);
-    System.out.println("\tsw $s0, 0($sp)");
+    System.out.println("\tsw $t0, 0($sp)");//callee save
     System.out.println("\tsw $ra, 4($sp)");
     for (int i = 0; i < localparams.length; i++){
         localparams[i].stack_offset = 8 + 4 * i;
+        System.out.println("\tsw $a" + i + ", " + (8 + 4 * i) + "($sp)");
+        //store the args into the stack
     }
     for (int i = 0; i < localvars.length; i++){
         localvars[i].stack_offset = 8 + 4 * (i + localparams.length);
@@ -1054,7 +1105,7 @@ public void methodOut(){
     if (curmeth.name.equals("main")){
         System.out.println("\tli $v0, 10 \n\tsyscall");
     } else {
-        System.out.println("\tlw $s0, 0($sp)");
+        System.out.println("\tlw $t0, 0($sp)");
         System.out.println("\tlw $ra, 4($sp)");
         System.out.println("\taddi $sp, $sp, " + stacksize);
         System.out.println("\tjr $ra");
@@ -1064,8 +1115,8 @@ public void methodOut(){
 
 public void assign(){
         if (arrayoffset != -1){//if its to an array index
-            System.out.println("\tla $t0, " + lastid);
-            System.out.println("\tsw $t0, " + arrayoffset + "($t0)");
+            System.out.println("\tlw $t1, " + curmeth.getVar(lastid).stack_offset + "($sp)");
+            System.out.println("\tsw $t0, " + (arrayoffset * 4) + "($t1)");
         } else if (curmeth.containsParam(lastid)){//if its a parameter
             System.out.println("\tsw $t0, " + curmeth.getParam(lastid).stack_offset + "($sp)");
         } else if (curmeth.containsVar(lastid)){ //if it's a local variable
@@ -1103,7 +1154,12 @@ public void idplusplus(){
             exprstack.push(i);
         }
     }
-    if (curmeth.containsParam(lastid)){
+    if (arrayoffset != -1){//if its to an array index
+            System.out.println("\tlw $t1, " + curmeth.getVar(lastid).stack_offset + "($sp)");
+            System.out.println("\tlw $t0, " + (arrayoffset * 4) + "($t1)");
+            System.out.println("\taddi $t0, $t0, 1");
+            System.out.println("\tsw $t0, " + (arrayoffset * 4) + "($t1)");
+    } else if (curmeth.containsParam(lastid)){
         System.out.println("\tlw $t" + reg + ", " + curmeth.getParam(lastid).stack_offset + "($sp)");
         System.out.println("\taddi $t" + reg + ", $t" + reg + ", 1");
         System.out.println("\tsw $t" + reg + ", " + curmeth.getParam(lastid).stack_offset + "($sp)");
@@ -1127,7 +1183,12 @@ public void idminusminus(){
             exprstack.push(i);
         }
     }
-    if (curmeth.containsParam(lastid)){
+    if (arrayoffset != -1){//if its to an array index
+            System.out.println("\tlw $t1, " + curmeth.getVar(lastid).stack_offset + "($sp)");
+            System.out.println("\tlw $t0, " + (4 * arrayoffset) + "($t1)");
+            System.out.println("\taddi $t0, $t0, -1");
+            System.out.println("\tsw $t0, " + (4 * arrayoffset) + "($t1)");
+    } else if (curmeth.containsParam(lastid)){
         System.out.println("\tlw $t" + reg + ", " + curmeth.getParam(lastid).stack_offset + "($sp)");
         System.out.println("\taddi $t" + reg + ", $t" + reg + ", -1");
         System.out.println("\tsw $t" + reg + ", " + curmeth.getParam(lastid).stack_offset + "($sp)");

@@ -1,0 +1,31 @@
+BEGIN
+willy : INT;
+VOID main(weird : INT){
+str : STRING;
+str := "Which fibonaci # would you like? (1-10)";
+PUT(str);
+num : INT;
+num := GET();
+answer : INT;
+answer := fibo(num);
+PUT(answer);
+
+}
+
+INT fibo(x : INT){
+   IF ( x < 1 ) THEN {
+      RETURN -1;
+   }
+   IF ( x == 1 ) THEN {
+      RETURN 1;
+   }
+   IF ( x == 2 ) THEN {
+      RETURN 1;
+   }
+   RETURN fibo(x - 1) + fibo(x - 2);
+}
+
+INT add1(x : INT){
+   RETURN x + 1;
+}
+END

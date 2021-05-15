@@ -1,0 +1,14 @@
+BEGIN
+VOID main(){
+   query : STRING;
+   query := "How many fibonnacci numbers? (0-20)";
+   num : INT;
+   num := GET();
+   array : INT[20];
+   array[0] := 1;
+   array[1] := 1;
+   FOR (INT i := 2; i < num; i++){
+      query := 4;
+   }
+}
+END
